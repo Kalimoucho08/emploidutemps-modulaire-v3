@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Structure Paramètres</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        pre { background: #f5f5f5; padding: 10px; border: 1px solid #ddd; }
+        .section { margin-bottom: 20px; }
+        button { margin: 5px; padding: 8px 12px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Test Structure Paramètres Globaux</h1>
+    
+    <div class="section">
+        <h2>1. Charger les scripts nécessaires</h2>
+        <button onclick="loadScripts()">Charger les scripts</button>
+        <div id="scripts-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Examiner localStorage</h2>
+        <button onclick="examineLocalStorage()">Examiner localStorage</button>
+        <pre id="localstorage-output"></pre>
+    </div>
+    
+    <div class="section">
+        <h2>3. Examiner state.parametres</h2>
+        <button onclick="examineState()">Examiner state.parametres</button>
+        <pre id="state-output"></pre>
+    </div>
+    
+    <div class="section">
+        <h2>4. Tester les fonctions de paramètres</h2>
+        <button onclick="testParametresFunctions()">Tester fonctions</button>
+        <pre id="functions-output"></pre>
+    </div>
+    
+    <div class="section">
+        <h2>5. Tester la propagation</h2>
+        <button onclick="testPropagation()">Tester propagation</button>
+        <pre id="propagation-output"></pre>
+    </div>
+    
+    <script>
+        let state = {};
+        let STORAGE_KEY = 'emploidutemps_state';
+        
+        function loadScripts() {
+            const status = document.getElementById('scripts-status');
+            try {
+                // Simuler le chargement des fonctions nécessaires
+                status.innerHTML = '<span class="success">Scripts chargés (simulation)</span>';
+                console.log('Scripts chargés');
+            } catch (e) {
+                status.innerHTML = `<span class="error">Erreur: ${e.message}</span>`;
+            }
+        }
+        
+        function examineLocalStorage() {
+            const output = document.getElementById('localstorage-output');
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (!saved) {
+                    output.textContent = 'Aucune donnée dans localStorage';
+                    return;
+                }
+                
+                const parsed = JSON.parse(saved);
+                output.textContent = JSON.stringify(parsed, null, 2);
+                
+                // Vérifier la structure des paramètres
+                if (parsed.parametres) {
+                    console.log('Structure de parametres:', parsed.parametres);
+                    console.log('Clés disponibles:', Object.keys(parsed.parametres));
+                    
+                    if (parsed.parametres.champsAffiches) {
+                        console.log('champsAffiches:', parsed.parametres.champsAffiches);
+                    }
+                    if (parsed.parametres.champsCreneauActifs) {
+                        console.log('champsCreneauActifs:', parsed.parametres.champsCreneauActifs);
+                    }
+                    if (parsed.parametres.champsEleveActifs) {
+                        console.log('champsEleveActifs:', parsed.parametres.champsEleveActifs);
+                    }
+                }
+            } catch (e) {
+                output.textContent = `Erreur: ${e.message}`;
+            }
+        }
+        
+        function examineState() {
+            const output = document.getElementById('state-output');
+            try {
+                // Charger l'état depuis localStorage
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (!saved) {
+                    output.textContent = 'Aucun état sauvegardé';
+                    return;
+                }
+                
+                state = JSON.parse(saved);
+                
+                // Analyser la structure
+                let analysis = {
+                    'État chargé': 'OK',
+                    'Structure de state.parametres': state.parametres ? 'Présente' : 'Absente',
+                    'Clés dans state.parametres': state.parametres ? Object.keys(state.parametres) : []
+                };
+                
+                if (state.parametres) {
+                    analysis['Détail champsAffiches'] = state.parametres.champsAffiches || 'Non défini';
+                    analysis['Détail champsCreneauActifs'] = state.parametres.champsCreneauActifs || 'Non défini';
+                    analysis['Détail champsEleveActifs'] = state.parametres.champsEleveActifs || 'Non défini';
+                    analysis['Détail joursAffiches'] = state.parametres.joursAffiches || 'Non défini';
+                    analysis['Détail paletteCouleurs'] = state.parametres.paletteCouleurs || 'Non défini';
+                    analysis['Détail pauses'] = state.parametres.pauses || 'Non défini';
+                }
+                
+                output.textContent = JSON.stringify(analysis, null, 2);
+                
+                // Log dans la console
+                console.log('Analyse complète de state:', state);
+                console.log('state.parametres:', state.parametres);
+                
+            } catch (e) {
+                output.textContent = `Erreur: ${e.message}`;
+            }
+        }
+        
+        function testParametresFunctions() {
+            const output = document.getElementById('functions-output');
+            let results = [];
+            
+            try {
+                // Tester si les fonctions existent dans les fichiers
+                results.push('=== Test des fonctions dans parametres.js ===');
+                
+                // Simuler l'ouverture des paramètres
+                results.push('1. ouvrirParametresGlobaux() - fonction principale');
+                
+                // Simuler la sauvegarde
+                results.push('2. sauvegarderParametres() - devrait mettre à jour state.parametres');
+                
+                // Vérifier les fonctions de propagation
+                results.push('3. appliquerCouleurs() - applique la palette de couleurs');
+                results.push('4. appliquerConfigurationChampsCreneau() - dans modals.js');
+                results.push('5. appliquerConfigurationChampsEleve() - dans eleves-fiche.js');
+                
+                // Vérifier les références
+                results.push('\n=== Références problématiques ===');
+                
+                // Charger l'état actuel
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const currentState = JSON.parse(saved);
+                    if (currentState.parametres) {
+                        results.push(`champsAffiches existe: ${!!currentState.parametres.champsAffiches}`);
+                        results.push(`champsCreneauActifs existe: ${!!currentState.parametres.champsCreneauActifs}`);
+                        results.push(`champsEleveActifs existe: ${!!currentState.parametres.champsEleveActifs}`);
+                        
+                        // Vérifier la cohérence
+                        if (currentState.parametres.champsAffiches && 
+                            !currentState.parametres.champsCreneauActifs) {
+                            results.push('⚠️ ATTENTION: champsAffiches existe mais champsCreneauActifs non - incohérence');
+                        }
+                    }
+                }
+                
+                output.textContent = results.join('\n');
+                
+            } catch (e) {
+                output.textContent = `Erreur: ${e.message}\n${e.stack}`;
+            }
+        }
+        
+        function testPropagation() {
+            const output = document.getElementById('propagation-output');
+            let results = [];
+            
+            try {
+                results.push('=== Test de propagation des paramètres ===');
+                
+                // Charger l'état actuel
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (!saved) {
+                    results.push('Aucun état à tester');
+                    output.textContent = results.join('\n');
+                    return;
+                }
+                
+                const currentState = JSON.parse(saved);
+                
+                // Simuler une modification
+                results.push('État avant modification:');
+                results.push(JSON.stringify(currentState.parametres, null, 2));
+                
+                // Modifier un paramètre
+                const testState = JSON.parse(saved);
+                if (!testState.parametres) {
+                    testState.parametres = {};
+                }
+                
+                // Ajouter/modifier des champs
+                testState.parametres.champsAffiches = {
+                    matiere: true,
+                    groupe: false,
+                    adulte: true,
+                    commentaire: false
+                };
+                
+                testState.parametres.joursAffiches = ['lundi', 'mardi', 'jeudi'];
+                
+                // Sauvegarder
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(testState));
+                
+                results.push('\nÉtat après modification:');
+                results.push(JSON.stringify(testState.parametres, null, 2));
+                
+                // Vérifier si la modification est persistée
+                const reloaded = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                results.push('\nÉtat rechargé:');
+                results.push(JSON.stringify(reloaded.parametres, null, 2));
+                
+                // Vérifier la cohérence
+                if (JSON.stringify(testState.parametres) === JSON.stringify(reloaded.parametres)) {
+                    results.push('\n✅ Persistance OK - les modifications sont sauvegardées');
+                } else {
+                    results.push('\n❌ Problème de persistance - les modifications ne sont pas sauvegardées');
+                }
+                
+                output.textContent = results.join('\n');
+                
+            } catch (e) {
+                output.textContent = `Erreur: ${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

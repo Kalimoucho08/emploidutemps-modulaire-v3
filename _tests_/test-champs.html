@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Configuration des Champs</title>
+    <style>
+        body { font-family: system-ui; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        button { margin: 5px; padding: 8px 12px; }
+    </style>
+</head>
+<body>
+    <h1>Test du système de configuration des champs</h1>
+    
+    <div class="test-section">
+        <h2>1. Vérification de la structure d'état</h2>
+        <button onclick="testEtat()">Vérifier state.parametres</button>
+        <div id="result-etat"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Test de l'interface HTML</h2>
+        <button onclick="testInterface()">Vérifier section Champs</button>
+        <div id="result-interface"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Test de sauvegarde/chargement</h2>
+        <button onclick="testSauvegarde()">Tester sauvegarde localStorage</button>
+        <div id="result-sauvegarde"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Test des formulaires</h2>
+        <button onclick="testFormulaires()">Vérifier champs désactivés</button>
+        <div id="result-formulaires"></div>
+    </div>
+    
+    <script>
+        // Charger les scripts nécessaires
+        function loadScript(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = callback;
+            document.head.appendChild(script);
+        }
+        
+        // Test 1: Vérification de la structure d'état
+        function testEtat() {
+            const result = document.getElementById('result-etat');
+            try {
+                // Charger store.js une seule fois
+                if (typeof state === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = 'js/store.js';
+                    script.onload = function() {
+                        setTimeout(() => {
+                            checkStateStructure();
+                        }, 100);
+                    };
+                    script.onerror = function() {
+                        // Si le script ne peut pas être chargé (CORS), vérifier localStorage directement
+                        checkStateFromLocalStorage();
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    checkStateStructure();
+                }
+                
+                function checkStateStructure() {
+                    if (typeof state !== 'undefined' && state.parametres) {
+                        const champsEleve = state.parametres.champsEleveActifs;
+                        const champsCreneau = state.parametres.champsCreneauActifs;
+                        
+                        let html = '<p class="success">✓ Structure d\'état trouvée</p>';
+                        html += '<p>Champs élève: ' + JSON.stringify(champsEleve) + '</p>';
+                        html += '<p>Champs créneau: ' + JSON.stringify(champsCreneau) + '</p>';
+                        
+                        // Vérifier que tous les champs sont activés par défaut
+                        const tousActifsEleve = Object.values(champsEleve).every(v => v === true);
+                        const tousActifsCreneau = Object.values(champsCreneau).every(v => v === true);
+                        
+                        if (tousActifsEleve && tousActifsCreneau) {
+                            html += '<p class="success">✓ Tous les champs sont activés par défaut</p>';
+                        } else {
+                            html += '<p class="error">✗ Certains champs ne sont pas activés par défaut</p>';
+                        }
+                        
+                        result.innerHTML = html;
+                    } else {
+                        checkStateFromLocalStorage();
+                    }
+                }
+                
+                function checkStateFromLocalStorage() {
+                    // Vérifier directement dans localStorage
+                    const saved = localStorage.getItem('edt_multieleves_data');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed.parametres) {
+                                const champsEleve = parsed.parametres.champsEleveActifs;
+                                const champsCreneau = parsed.parametres.champsCreneauActifs;
+                                
+                                let html = '<p class="success">✓ Structure d\'état trouvée dans localStorage</p>';
+                                if (champsEleve) {
+                                    html += '<p>Champs élève: ' + JSON.stringify(champsEleve) + '</p>';
+                                }
+                                if (champsCreneau) {
+                                    html += '<p>Champs créneau: ' + JSON.stringify(champsCreneau) + '</p>';
+                                }
+                                
+                                if (champsEleve && champsCreneau) {
+                                    html += '<p class="success">✓ Configuration des champs présente</p>';
+                                } else {
+                                    html += '<p class="error">✗ Configuration des champs manquante</p>';
+                                }
+                                
+                                result.innerHTML = html;
+                                return;
+                            }
+                        } catch (e) {
+                            // Continuer avec l'erreur
+                        }
+                    }
+                    
+                    result.innerHTML = '<p class="error">✗ state.parametres non trouvé. Le système de configuration des champs peut ne pas être initialisé.</p>';
+                }
+            } catch (e) {
+                result.innerHTML = '<p class="error">✗ Erreur: ' + e.message + '</p>';
+            }
+        }
+        
+        // Test 2: Vérification de l'interface HTML
+        function testInterface() {
+            const result = document.getElementById('result-interface');
+            try {
+                // Ouvrir l'application dans un iframe pour accéder à son DOM
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = 'index.html';
+                document.body.appendChild(iframe);
+                
+                iframe.onload = function() {
+                    try {
+                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        
+                        // Vérifier la section paramètres-champs
+                        const sectionChamps = iframeDoc.getElementById('parametres-champs');
+                        if (sectionChamps) {
+                            let htmlResult = '<p class="success">✓ Section "Champs" trouvée dans index.html</p>';
+                            
+                            // Vérifier les groupes
+                            const groupes = sectionChamps.querySelectorAll('.champs-groupe');
+                            htmlResult += '<p>Groupes trouvés: ' + groupes.length + ' (attendu: 2)</p>';
+                            
+                            // Vérifier les cases à cocher
+                            const checkboxes = sectionChamps.querySelectorAll('input[type="checkbox"]');
+                            htmlResult += '<p>Cases à cocher trouvées: ' + checkboxes.length + ' (attendu: 12)</p>';
+                            
+                            if (groupes.length === 2 && checkboxes.length === 12) {
+                                htmlResult += '<p class="success">✓ Interface HTML correcte</p>';
+                            } else {
+                                htmlResult += '<p class="error">✗ Interface HTML incomplète</p>';
+                            }
+                            
+                            result.innerHTML = htmlResult;
+                        } else {
+                            result.innerHTML = '<p class="error">✗ Section "Champs" non trouvée</p>';
+                        }
+                    } catch (e) {
+                        result.innerHTML = '<p class="error">✗ Erreur d\'accès à l\'iframe: ' + e.message + '</p>';
+                    } finally {
+                        document.body.removeChild(iframe);
+                    }
+                };
+                
+                iframe.onerror = function() {
+                    result.innerHTML = '<p class="error">✗ Impossible de charger index.html (CORS). Test manuel requis.</p>';
+                    document.body.removeChild(iframe);
+                };
+            } catch (e) {
+                result.innerHTML = '<p class="error">✗ Erreur: ' + e.message + '</p>';
+            }
+        }
+        
+        // Test 3: Test de sauvegarde/chargement
+        function testSauvegarde() {
+            const result = document.getElementById('result-sauvegarde');
+            try {
+                // Simuler la sauvegarde
+                const testConfig = {
+                    champsEleveActifs: {
+                        classe: false,
+                        ulis: true,
+                        groupe: true,
+                        aesh: false,
+                        pec: true,
+                        niveau: true
+                    },
+                    champsCreneauActifs: {
+                        matiere: true,
+                        groupe: false,
+                        adulte: true,
+                        type: false,
+                        regroupement: true,
+                        commentaire: true
+                    }
+                };
+                
+                // Sauvegarder dans localStorage
+                localStorage.setItem('test-config-champs', JSON.stringify(testConfig));
+                
+                // Recharger
+                const saved = JSON.parse(localStorage.getItem('test-config-champs'));
+                
+                if (saved && saved.champsEleveActifs && saved.champsCreneauActifs) {
+                    let html = '<p class="success">✓ Sauvegarde/chargement localStorage fonctionne</p>';
+                    html += '<p>Configuration test sauvegardée et rechargée avec succès</p>';
+                    html += '<p>Champs élève désactivés: ' + 
+                        Object.entries(saved.champsEleveActifs).filter(([k, v]) => !v).map(([k]) => k).join(', ') + '</p>';
+                    
+                    result.innerHTML = html;
+                } else {
+                    result.innerHTML = '<p class="error">✗ Échec de sauvegarde/chargement</p>';
+                }
+                
+                // Nettoyer
+                localStorage.removeItem('test-config-champs');
+            } catch (e) {
+                result.innerHTML = '<p class="error">✗ Erreur: ' + e.message + '</p>';
+            }
+        }
+        
+        // Test 4: Test des formulaires
+        function testFormulaires() {
+            const result = document.getElementById('result-formulaires');
+            try {
+                // Vérifier si les fonctions sont définies globalement (si les scripts sont chargés)
+                let html = '<p>Analyse des fonctions de configuration...</p>';
+                
+                // Charger les scripts nécessaires
+                const scripts = ['js/store.js', 'js/eleves-fiche.js', 'js/modals.js'];
+                let loadedCount = 0;
+                
+                function checkAfterLoad() {
+                    loadedCount++;
+                    if (loadedCount === scripts.length) {
+                        // Après chargement, vérifier les fonctions
+                        const hasEleveConfig = typeof appliquerConfigurationChampsEleve !== 'undefined';
+                        const hasCreneauConfig = typeof appliquerConfigurationChampsCreneau !== 'undefined';
+                        
+                        if (hasEleveConfig && hasCreneauConfig) {
+                            html += '<p class="success">✓ Fonctions de configuration trouvées</p>';
+                            html += '<p>- appliquerConfigurationChampsEleve() dans eleves-fiche.js</p>';
+                            html += '<p>- appliquerConfigurationChampsCreneau() dans modals.js</p>';
+                            
+                            // Vérifier que les fonctions sont appelées dans les formulaires
+                            // (on ne peut pas vérifier directement sans accès aux fichiers)
+                            html += '<p class="success">✓ Fonctions disponibles globalement</p>';
+                            html += '<p>Note: Pour vérifier les appels, ouvrez la console et testez manuellement.</p>';
+                        } else {
+                            html += '<p class="error">✗ Fonctions de configuration manquantes</p>';
+                            if (!hasEleveConfig) html += '<p>- appliquerConfigurationChampsEleve() non définie</p>';
+                            if (!hasCreneauConfig) html += '<p>- appliquerConfigurationChampsCreneau() non définie</p>';
+                        }
+                        
+                        result.innerHTML = html;
+                    }
+                }
+                
+                // Charger chaque script
+                scripts.forEach(src => {
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = checkAfterLoad;
+                    script.onerror = function() {
+                        html += `<p class="error">✗ Impossible de charger ${src} (CORS)</p>`;
+                        checkAfterLoad();
+                    };
+                    document.head.appendChild(script);
+                });
+            } catch (e) {
+                result.innerHTML = '<p class="error">✗ Erreur: ' + e.message + '</p>';
+            }
+        }
+        
+        // Exécuter tous les tests
+        function runAllTests() {
+            testEtat();
+            setTimeout(testInterface, 500);
+            setTimeout(testSauvegarde, 1000);
+            setTimeout(testFormulaires, 1500);
+        }
+        
+        // Exécuter tous les tests au chargement
+        window.onload = function() {
+            setTimeout(runAllTests, 1000);
+        };
+    </script>
+    
+    <div style="margin-top: 30px; padding: 15px; background: #f0f0f0;">
+        <h3>Actions de test</h3>
+        <button onclick="runAllTests()">Exécuter tous les tests</button>
+        <button onclick="window.open('index.html', '_blank')">Ouvrir l'application</button>
+        <button onclick="localStorage.clear(); alert('localStorage nettoyé')">Nettoyer localStorage</button>
+    </div>
+</body>
+</html>

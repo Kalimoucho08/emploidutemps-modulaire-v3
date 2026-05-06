@@ -1,0 +1,663 @@
+/**
+ * style.css
+ */
+:root {
+  /* Couleurs principales (configurables) */
+  --accent: #4a6fa5;               /* Couleur principale */
+  --accent-dark: #3a5a85;          /* Version assombrie de la couleur principale */
+  --secondary-color: #6c757d;      /* Couleur secondaire */
+  --accent-color: #28a745;         /* Couleur d'accent (succès) */
+  --background-color: #f8f9fa;     /* Couleur de fond */
+  --border-color: #444;            /* Couleur des bordures */
+  --text-main: #222;               /* Couleur du texte principal */
+  --muted: #777;                   /* Couleur du texte secondaire */
+  
+  /* Couleurs des élèves (configurables) */
+  --eleve-header-bg: #e3f2fd;      /* Fond des en-têtes élèves */
+  --eleve-header-text: #0d47a1;    /* Texte des en-têtes élèves */
+  
+  /* Couleurs des créneaux (configurables) */
+  --creneau-fixe: #4a6fa5;         /* Couleur des créneaux fixes */
+  --creneau-exception: #ffc107;    /* Couleur des créneaux exception */
+  --creneau-pause: #6c757d;        /* Couleur des pauses */
+  
+  /* Couleurs des rôles (configurables) */
+  --role-enseignant: #4caf50;
+  --role-aeshco: #ff9800;
+  --role-autre: #9c27b0;
+  
+  /* Couleurs statiques (non configurables) */
+  --header-bg: #f0f0f0;
+  --slot-height: 26px;
+  --case-bg: #ffffff;
+  --case-bg-alt: #fafafa;
+  --case-hover-bg: #e3f2fd;
+  --selection-bg: #bbdefb;
+  --danger: #c62828;
+  --font-size-small: 12px;
+
+  /* Variables pour la palette de 12 couleurs (seront mises à jour dynamiquement par appliquerCouleurs()) */
+  --couleur-palette-1: #ffcccc;
+  --couleur-palette-2: #ffcc99;
+  --couleur-palette-3: #ffff99;
+  --couleur-palette-4: #ccffcc;
+  --couleur-palette-5: #ccccff;
+  --couleur-palette-6: #ccffff;
+  --couleur-palette-7: #ffccff;
+  --couleur-palette-8: #e6ccff;
+  --couleur-palette-9: #d9d9d9;
+  --couleur-palette-10: #ff9999;
+  --couleur-palette-11: #ffb366;
+  --couleur-palette-12: #ffff66;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text-main); background: var(--background-color); }
+
+header { background: var(--case-bg); border-bottom: 1px solid var(--border-color); padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; position: sticky; top: 0; z-index: 10; }
+header h1 { font-size: 18px; margin: 0; }
+header .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+button { cursor: pointer; border-radius: 4px; border: 1px solid #bbb; background: #fff; padding: 4px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+button.primary { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
+button.primary:hover { background: var(--accent-dark); }
+button.danger { background: var(--danger); border-color: #b71c1c; color: #fff; }
+button.active { background: var(--accent); color: #fff; border-color: var(--accent-dark); }
+button:disabled { opacity: 0.6; cursor: default; }
+
+main { padding: 8px 16px 24px; }
+
+.top-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+.day-tabs { display: inline-flex; border-radius: 999px; background: var(--case-bg-alt); padding: 2px; }
+.day-tab { border-radius: 999px; border: none; background: transparent; padding: 4px 12px; font-size: 13px; color: var(--text-main); }
+.day-tab.active { background: #fff; color: var(--accent-dark); font-weight: 600; box-shadow: 0 0 0 1px #ddd; }
+
+.info-small { font-size: 12px; color: var(--muted); }
+.selection-info { font-size: 12px; color: var(--accent-dark); font-weight: 600; padding: 4px 8px; background: var(--selection-bg); border-radius: 4px; display: none; }
+.selection-info.visible { display: inline-block; }
+
+.eleves-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.eleve-pill { padding: 2px 6px; border-radius: 999px; background: var(--eleve-header-bg); color: var(--eleve-header-text); font-size: 11px; border: 1px solid #90caf9; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eleve-pill.inactif { background: #eeeeee; border-color: #cccccc; color: #777; }
+.eleve-pill input { margin-right: 4px; }
+
+.edt-wrapper { margin-top: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); padding: 8px; overflow: auto; position: relative; }
+
+table.edt-jour { border-collapse: collapse; width: 100%; min-width: 1100px; table-layout: fixed; font-size: 12px; }
+.edt-jour th, .edt-jour td { border: 1px solid var(--border-color); text-align: center; }
+.edt-jour thead th { background: var(--header-bg); padding: 4px; }
+.edt-jour thead th.eleve-header { background: var(--eleve-header-bg); color: var(--eleve-header-text); font-weight: 600; font-size: 12px; cursor: grab; user-select: none; position: relative; }
+.edt-jour thead th.eleve-header:active { cursor: grabbing; }
+.edt-jour thead th.eleve-header.dragging { opacity: 0.5; background: #ffeb3b; }
+.edt-jour thead th.eleve-header.drag-over { background: #ff9800; color: white; }
+.edt-jour thead th.heure-header { width: 60px; font-weight: 600; }
+
+.edt-jour tbody td { height: var(--slot-height); padding: 0; }
+.edt-jour tbody td.heure-cell { font-size: 11px; background: #f5f5f5; cursor: pointer; position: relative; }
+.edt-jour tbody td.heure-cell:hover { background: #e0e0e0; font-weight: bold; }
+
+.edt-jour tbody tr:nth-child(odd) td.slot-cell { background: var(--case-bg-alt); }
+.edt-jour tbody tr:nth-child(even) td.slot-cell { background: var(--case-bg); }
+
+.global-slot:hover { filter: brightness(0.95); }
+
+.slot-inner { width: 100%; height: 100%; padding: 2px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; position: relative; cursor: pointer; user-select: none; }
+.slot-inner:hover { background: var(--case-hover-bg); }
+.slot-inner.has-lesson { background: var(--selection-bg); border-left: 3px solid var(--accent-dark); }
+.slot-inner.selected { background: #4caf50 !important; color: white !important; border: 2px solid #2e7d32 !important; }
+
+.slot-matiere { font-weight: 600; }
+.slot-groupe { font-size: 10px; opacity: 0.8; }
+.slot-type { position: absolute; right: 2px; bottom: 1px; font-size: 9px; opacity: 0.6; }
+.slot-adulte-badge { display: inline-block; margin-top: 2px; padding: 2px 4px; border-radius: 4px; font-size: 9px; color: white; font-weight: bold; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+.panel { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; }
+.panel label { display: inline-flex; align-items: center; gap: 4px; }
+.panel input[type="text"], .panel select { font-size: 12px; padding: 3px 6px; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-backdrop.visible { display: flex; }
+.modal { background: #fff; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); padding: 12px 16px; width: 340px; max-width: calc(100% - 20px); font-size: 13px; max-height: 95vh; overflow-y: auto; }
+.modal.wide { width: 440px; }
+.modal.xl { width: 700px; }
+.modal h2 { font-size: 15px; margin: 0 0 8px; }
+.modal .subtitle { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.modal form { display: flex; flex-direction: column; gap: 8px; }
+.modal label { font-size: 12px; display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.modal input[type="text"], .modal input[type="time"], .modal select, .modal textarea { font-size: 12px; padding: 4px 8px; border-radius: 4px; border: 1px solid #bbb; width: 100%; font-family: inherit; }
+.modal textarea { resize: vertical; min-height: 40px; }
+
+.checkbox-group { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px; background: #f5f5f5; border-radius: 4px; }
+.checkbox-group label { flex-direction: row; align-items: center; gap: 4px; margin-bottom: 0; font-weight: normal; }
+
+.pause-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; background: #f9f9f9; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; }
+
+.modal-actions { margin-top: 12px; display: flex; justify-content: flex-end; gap: 6px; padding-top: 8px; border-top: 1px solid #eee;}
+.left-actions { margin-right: auto; }
+
+.color-palette, .text-color-palette { display: flex; flex-wrap: wrap; gap: 4px; }
+.color-option, .text-color-option { width: 24px; height: 24px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+.color-option:hover, .text-color-option:hover { border-color: #666; transform: scale(1.1); }
+.color-option.selected, .text-color-option.selected { border-color: #1976d2; box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.3); }
+
+/* Palette de couleurs en grille 6x2 pour les paramètres globaux */
+.palette-container {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 6px;
+  margin: 8px 0;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.palette-item {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.palette-item:hover {
+  border-color: #666;
+  transform: scale(1.05);
+}
+
+.palette-item.selected {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.3);
+}
+
+.context-menu { position: absolute; background: white; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; z-index: 1000; display: none; min-width: 180px; padding: 4px 0; font-size: 13px; color: var(--text-main); }
+.context-menu.visible { display: block; }
+.context-menu-item { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; }
+.context-menu-item:hover { background: var(--case-hover-bg); }
+.context-menu-item.danger { color: var(--danger); }
+.context-menu-item.disabled { color: #aaa; cursor: not-allowed; }
+.context-menu-item.disabled:hover { background: transparent; }
+.context-menu-separator { height: 1px; background-color: #eee; margin: 4px 0; }
+
+
+/* ==========================================================
+   CSS POUR L'EXPORT PDF MULTI-PAGES AVEC HTML2PDF
+   ========================================================== */
+.print-only { display: none; }
+
+.html2pdf__page-break {
+  page-break-before: always;
+  clear: both;
+}
+
+/* On cache l'interface ET le tableau original pendant la photo */
+body.is-printing header, 
+body.is-printing .top-bar, 
+body.is-printing .panel, 
+body.is-printing .context-menu { 
+  display: none !important; 
+}
+
+body.is-printing {
+  background: white;
+  margin: 1cm;
+  padding: 1cm;
+}
+
+/* LE SECRET EST ICI : Une boîte de largeur parfaite pour forcer la grille */
+#export-container {
+  width: 1100px; 
+  background: white;
+  margin: 0;
+  padding: 10px;
+}
+
+.print-page {
+  width: 100%;
+}
+
+.print-page h2 {
+  font-family: inherit;
+  color: #000;
+  margin: 0 0 15px 0;
+  text-align: center;
+  font-size: 24px;
+}
+
+/* Désactive les barres de défilement et l'effet boîte sur le PDF */
+.print-page .edt-wrapper {
+  box-shadow: none !important; 
+  border-radius: 0 !important; 
+  padding: 0 !important; 
+  margin: 0 !important;
+  overflow: visible !important; /* EMPÊCHE DE COUPER LA GRILLE ! */
+}
+
+/* Le tableau prend toute la place de sa boîte de 1100px */
+.print-page table.edt-jour {
+  width: 100%; 
+  min-width: 100%; 
+  table-layout: fixed; 
+  font-size: 11px;
+}
+/* ==========================================================
+   CSS SUPPLÉMENTAIRE POUR LA FICHE ÉLÈVE
+   ========================================================== */
+
+/* Styles pour la fiche élève */
+.modal.xl { width: 1100px; }
+
+/* Alertes dates MDPH */
+.mdph-date-input.expired {
+  background-color: #ffcdd2;
+  color: #c62828;
+  font-weight: bold;
+  border: 2px solid #c62828;
+}
+
+/* Formulaire fiche en grille */
+#fiche-eleve-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Sections de la fiche */
+#fiche-eleve-content > div > section {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-left: 4px solid var(--accent);
+}
+
+#fiche-eleve-content h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 6px;
+}
+
+/* Styles pour les boutons dans la liste des élèves */
+#eleves-list-modal button {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: 32px;
+}
+
+#eleves-list-modal button:hover {
+  transform: scale(1.1);
+}
+
+/* Bouton fiche */
+.btn-fiche {
+  background: #9c27b0;
+  border-color: #7b1fa2;
+  color: white;
+}
+
+.btn-fiche:hover {
+  background: #7b1fa2;
+}
+
+/* Responsive pour fiche élève */
+@media (max-width: 1200px) {
+  #fiche-eleve-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal.xl {
+    width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* ==========================================================
+     STYLES POUR LES PARAMÈTRES GLOBAUX - NOUVELLE ARCHITECTURE
+     ========================================================== */
+
+  /* Bouton paramètres globaux */
+  .btn-parametres-globaux {
+    background: #673ab7;
+    border-color: #512da8;
+    color: white;
+  }
+
+  .btn-parametres-globaux:hover {
+    background: #512da8;
+  }
+
+  /* Barre de boutons permanents */
+  .parametres-buttons-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    padding: 8px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    flex-wrap: wrap;
+  }
+
+  .parametres-button {
+    padding: 8px 12px;
+    border: none;
+    background: #fff;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 4px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+  }
+
+  .parametres-button:hover {
+    background: #e3f2fd;
+    color: var(--accent);
+    border-color: #bbdefb;
+  }
+
+  .parametres-button.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent-dark);
+    font-weight: 600;
+  }
+
+  /* Conteneur des sections (sous-modales) */
+  .parametres-sections-container {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 4px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 16px;
+    background: #f9f9f9;
+  }
+
+  .parametres-section-content {
+    display: none;
+  }
+
+  .parametres-section-content.active {
+    display: block;
+  }
+
+  /* Sous-sections des paramètres */
+  .parametres-subsection {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .parametres-subsection:last-child {
+    border-bottom: none;
+  }
+
+  .parametres-subsection h3 {
+    font-size: 14px;
+    margin: 0 0 12px 0;
+    color: var(--accent-dark);
+  }
+
+  .parametres-subsection h4 {
+    font-size: 13px;
+    margin: 0 0 8px 0;
+    color: var(--text-main);
+  }
+
+  /* Inputs de couleur */
+  .parametres-subsection input[type="color"] {
+    width: 40px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  /* Groupes de cases à cocher */
+  .parametres-subsection .checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    padding: 12px;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #eee;
+  }
+
+  /* Conteneur des pauses */
+  #param-pauses-container {
+    margin-bottom: 12px;
+  }
+
+  /* Ligne de pause */
+  .pause-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+    background: #fff;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+
+  .pause-row input[type="text"] {
+    flex: 2;
+  }
+
+  .pause-row input[type="time"] {
+    flex: 1;
+  }
+
+  .pause-row input[type="color"] {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+  }
+
+  /* Bouton ajouter pause */
+  #btn-ajouter-pause {
+    font-size: 12px;
+    padding: 4px 8px;
+    background: #e3f2fd;
+    border-color: #bbdefb;
+    color: var(--accent-dark);
+  }
+
+  #btn-ajouter-pause:hover {
+    background: #bbdefb;
+  }
+
+  /* Responsive pour les paramètres */
+  @media (max-width: 768px) {
+    .parametres-buttons-bar {
+      flex-wrap: wrap;
+    }
+    
+    .parametres-button {
+      flex: 1;
+      min-width: 140px;
+      text-align: center;
+      justify-content: center;
+    }
+    
+    .parametres-subsection .checkbox-group {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    
+    .pause-row {
+      flex-wrap: wrap;
+    }
+    
+    .pause-row input[type="text"],
+    .pause-row input[type="time"] {
+      flex: 1 1 100%;
+    }
+  }
+  
+  /* ==========================================================
+     STYLES POUR LA SECTION "CHAMPS" DES PARAMÈTRES GLOBAUX
+     ========================================================== */
+  
+  /* Groupes de champs */
+  .champs-groupe {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  
+  .champs-groupe h4 {
+    font-size: 14px;
+    margin: 0 0 12px 0;
+    color: var(--accent-dark);
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .champs-groupe h4::before {
+    content: "📋";
+    font-size: 16px;
+  }
+  
+  /* Conteneur des items de champ */
+  .champs-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  
+  /* Item de champ individuel */
+  .champ-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #f9f9f9;
+    border-radius: 6px;
+    border: 1px solid #eee;
+    transition: all 0.2s ease;
+  }
+  
+  .champ-item:hover {
+    background: #f0f7ff;
+    border-color: #bbdefb;
+    transform: translateY(-1px);
+  }
+  
+  /* Case à cocher */
+  .champ-checkbox {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+  
+  /* Label de la case à cocher */
+  .champ-label {
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    flex: 1;
+  }
+  
+  .champ-label:hover {
+    color: var(--accent);
+  }
+  
+  /* Indicateur d'état */
+  .champ-status {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    font-weight: 600;
+  }
+  
+  .champ-status.inactive {
+    background: #ffebee;
+    color: #c62828;
+  }
+  
+  /* Description du champ */
+  .champ-description {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+  
+  /* Responsive pour les champs */
+  @media (max-width: 768px) {
+    .champs-items {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    
+    .champ-item {
+      padding: 6px 8px;
+    }
+    
+    .champ-label {
+      font-size: 12px;
+    }
+  }
+  
+  /* Styles pour les champs désactivés dans les formulaires */
+  .champ-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  .champ-disabled label {
+    color: #999;
+  }
+  
+  .champ-disabled input,
+  .champ-disabled select,
+  .champ-disabled textarea {
+    background-color: #f5f5f5;
+    border-color: #ddd;
+    color: #777;
+  }
+  
+  /* Message d'information pour les champs désactivés */
+  .champ-disabled-message {
+    font-size: 11px;
+    color: #ff9800;
+    font-style: italic;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .champ-disabled-message::before {
+    content: "ℹ️";
+    font-size: 10px;
+  }
+}

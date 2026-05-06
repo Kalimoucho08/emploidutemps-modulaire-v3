@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Emploi du temps multi-élèves</title>
+  
+  <style>
+    /* Les variables globales de couleurs et dimensions */
+    :root {
+      --border-color: #444;
+      --header-bg: #f0f0f0;
+      --slot-height: 26px;
+      --eleve-header-bg: #e3f2fd;
+      --eleve-header-text: #0d47a1;
+      --case-bg: #ffffff;
+      --case-bg-alt: #fafafa;
+      --case-hover-bg: #e3f2fd;
+      --selection-bg: #bbdefb;
+      --accent: #1976d2;
+      --accent-dark: #0d47a1;
+      --danger: #c62828;
+      --text-main: #222;
+      --muted: #777;
+      --font-size-small: 12px;
+      --role-enseignant: #4caf50;
+      --role-aeshco: #ff9800;
+      --role-autre: #9c27b0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { margin: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text-main); background: #f8f8f8; }
+
+    header { background: #ffffff; border-bottom: 1px solid #ddd; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; position: sticky; top: 0; z-index: 10; flex-wrap: wrap; }
+    header h1 { font-size: 18px; margin: 0; }
+    header .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+    button { cursor: pointer; border-radius: 4px; border: 1px solid #bbb; background: #fff; padding: 4px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+    button.primary { background: var(--accent); border-color: var(--accent-dark); color: #fff; }
+    button.primary:hover { background: var(--accent-dark); }
+    button.danger { background: var(--danger); border-color: #b71c1c; color: #fff; }
+    button.active { background: var(--accent); color: #fff; border-color: var(--accent-dark); }
+    button:disabled { opacity: 0.6; cursor: default; }
+
+    .btn-group { display: inline-flex; gap: 2px; background: #e0e0e0; padding: 2px; border-radius: 4px; border: 1px solid #ccc; }
+    .btn-group button { border: none; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+
+    main { padding: 8px 16px 24px; }
+
+    .top-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .day-tabs { display: inline-flex; border-radius: 999px; background: #e0e0e0; padding: 2px; }
+    .day-tab { border-radius: 999px; border: none; background: transparent; padding: 4px 12px; font-size: 13px; color: var(--text-main); }
+    .day-tab.active { background: #fff; color: var(--accent-dark); font-weight: 600; box-shadow: 0 0 0 1px #ddd; }
+
+    .info-small { font-size: 12px; color: var(--muted); }
+    .selection-info { font-size: 12px; color: var(--accent-dark); font-weight: 600; padding: 4px 8px; background: var(--selection-bg); border-radius: 4px; display: none; }
+    .selection-info.visible { display: inline-block; }
+
+    .eleves-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .eleve-pill { padding: 2px 6px; border-radius: 999px; background: var(--eleve-header-bg); color: var(--eleve-header-text); font-size: 11px; border: 1px solid #90caf9; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eleve-pill.inactif { background: #eeeeee; border-color: #cccccc; color: #777; }
+    .eleve-pill input { margin-right: 4px; }
+
+    .edt-wrapper { margin-top: 8px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); padding: 8px; overflow: auto; position: relative; }
+
+    table.edt-jour { border-collapse: collapse; width: 100%; min-width: 1100px; table-layout: fixed; font-size: 12px; }
+    .edt-jour th, .edt-jour td { border: 1px solid var(--border-color); text-align: center; }
+    .edt-jour thead th { background: var(--header-bg); padding: 4px; }
+    .edt-jour thead th.eleve-header { background: var(--eleve-header-bg); color: var(--eleve-header-text); font-weight: 600; font-size: 12px; cursor: grab; user-select: none; position: relative; }
+    .edt-jour thead th.eleve-header:active { cursor: grabbing; }
+    .edt-jour thead th.eleve-header.dragging { opacity: 0.5; background: #ffeb3b; }
+    .edt-jour thead th.eleve-header.drag-over { background: #ff9800; color: white; }
+    .edt-jour thead th.heure-header { width: 60px; font-weight: 600; }
+
+    .edt-jour tbody td { height: var(--slot-height); padding: 0; }
+    .edt-jour tbody td.heure-cell { font-size: 11px; background: #f5f5f5; cursor: pointer; position: relative; }
+    .edt-jour tbody td.heure-cell:hover { background: #e0e0e0; font-weight: bold; }
+
+    .edt-jour tbody tr:nth-child(odd) td.slot-cell { background: var(--case-bg-alt); }
+    .edt-jour tbody tr:nth-child(even) td.slot-cell { background: var(--case-bg); }
+
+    .global-slot:hover { filter: brightness(0.95); }
+
+    .slot-inner { width: 100%; height: 100%; padding: 2px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; position: relative; cursor: pointer; user-select: none; }
+    .slot-inner:hover { background: var(--case-hover-bg); }
+    .slot-inner.has-lesson { background: var(--selection-bg); border-left: 3px solid var(--accent-dark); }
+    .slot-inner.selected { background: #4caf50 !important; color: white !important; border: 2px solid #2e7d32 !important; }
+
+    .slot-matiere { font-weight: 600; }
+    .slot-groupe { font-size: 10px; opacity: 0.8; }
+    .slot-type { position: absolute; right: 2px; bottom: 1px; font-size: 9px; opacity: 0.6; }
+    .slot-adulte-badge { display: inline-block; margin-top: 2px; padding: 2px 4px; border-radius: 4px; font-size: 9px; color: white; font-weight: bold; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+    .panel { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; }
+    .panel label { display: inline-flex; align-items: center; gap: 4px; }
+    .panel input[type="text"], .panel select { font-size: 12px; padding: 3px 6px; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal-backdrop.visible { display: flex; }
+    .modal { background: #fff; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); padding: 12px 16px; width: 340px; max-width: calc(100% - 20px); font-size: 13px; max-height: 95vh; overflow-y: auto; }
+    .modal.wide { width: 440px; }
+    .modal.xl { width: 700px; }
+    .modal h2 { font-size: 15px; margin: 0 0 8px; }
+    .modal .subtitle { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .modal form { display: flex; flex-direction: column; gap: 8px; }
+    .modal label { font-size: 12px; display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+    .modal input[type="text"], .modal input[type="time"], .modal select, .modal textarea { font-size: 12px; padding: 4px 8px; border-radius: 4px; border: 1px solid #bbb; width: 100%; font-family: inherit; }
+    .modal textarea { resize: vertical; min-height: 40px; }
+
+    .checkbox-group { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px; background: #f5f5f5; border-radius: 4px; }
+    .checkbox-group label { flex-direction: row; align-items: center; gap: 4px; margin-bottom: 0; font-weight: normal; }
+
+    .pause-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; background: #f9f9f9; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; }
+
+    .modal-actions { margin-top: 12px; display: flex; justify-content: flex-end; gap: 6px; padding-top: 8px; border-top: 1px solid #eee;}
+    .left-actions { margin-right: auto; }
+
+    .color-palette, .text-color-palette { display: flex; flex-wrap: wrap; gap: 4px; }
+    .color-option, .text-color-option { width: 24px; height: 24px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+    .color-option:hover, .text-color-option:hover { border-color: #666; transform: scale(1.1); }
+    .color-option.selected, .text-color-option.selected { border-color: #1976d2; box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.3); }
+
+    .context-menu { position: absolute; background: white; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; z-index: 1000; display: none; min-width: 180px; padding: 4px 0; font-size: 13px; color: var(--text-main); }
+    .context-menu.visible { display: block; }
+    .context-menu-item { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; }
+    .context-menu-item:hover { background: var(--case-hover-bg); }
+    .context-menu-item.danger { color: var(--danger); }
+    .context-menu-item.disabled { color: #aaa; cursor: not-allowed; }
+    .context-menu-item.disabled:hover { background: transparent; }
+    .context-menu-separator { height: 1px; background-color: #eee; margin: 4px 0; }
+
+    /* ==========================================================
+       CSS POUR L'IMPRESSION NATIVE (PDF)
+       ========================================================== */
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      @page { size: A4 portrait; margin: 10mm; }
+      body.is-printing header, body.is-printing .top-bar, body.is-printing .panel, body.is-printing .context-menu, body.is-printing #print-area { display: none !important; }
+      body.is-printing { background: white !important; margin: 0 !important; padding: 0 !important; }
+      #export-container { display: block !important; width: 100% !important; }
+      .print-page { width: 100%; page-break-after: always; }
+      .print-page h2 { font-family: inherit; color: #000; margin: 0 0 15px 0; text-align: center; font-size: 20px; }
+      .print-page .edt-wrapper { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+      .print-page table.edt-jour { width: 100%; min-width: auto; table-layout: fixed; font-size: 10px; border-collapse: collapse; }
+      .print-page th, .print-page td { border: 1px solid #000 !important; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Emploi du temps</h1>
+  <div class="actions">
+    
+    <div class="btn-group">
+      <button id="btn-undo" title="Annuler la dernière action (Ctrl+Z)">↶</button>
+      <button id="btn-redo" title="Refaire l'action annulée (Ctrl+Y)">↷</button>
+    </div>
+
+    <div class="btn-group">
+      <button id="btn-export" title="Sauvegarder l'état actuel dans un fichier">💾 Fichier</button>
+      <button id="btn-import" title="Charger un emploi du temps sauvegardé">📂 Charger</button>
+      <input type="file" id="import-file" accept=".json" style="display:none;">
+    </div>
+
+    <button id="btn-stats" class="primary">📊 Statistiques</button>
+
+    <button id="btn-parametres-globaux" class="btn-parametres-globaux">⚙️ Paramètres globaux</button>
+    <button id="btn-view-mode">🔒 Consultation</button>
+    <button id="btn-bulk-edit" class="primary" disabled>✏️ Éditer (<span id="selection-count">0</span>)</button>
+    <button id="btn-add-eleve">👥 Gestion des élèves</button>
+    <button id="btn-print" class="primary">🖨️ PDF</button>
+    <button id="btn-reset" class="danger">⚠ Reset</button>
+  </div>
+</header>
+
+<main>
+  <div class="top-bar">
+    <div class="day-tabs" id="day-tabs"></div>
+    <div class="info-small" id="normal-hint">Clic pour sélectionner, Shift+Clic pour sélection multiple. <b>Double-clic</b> ou <b>Clic Droit</b> pour éditer.</div>
+    <div class="info-small" id="view-hint" style="display:none; color: var(--danger); font-weight: bold;">🔒 Mode Consultation actif. Aucune modification possible.</div>
+    
+    <div class="selection-info" id="selection-bar">
+      <span id="selected-count">0</span> case(s) sélectionnée(s)
+      <button id="btn-clear-selection" style="margin-left:8px; padding:2px 6px; font-size:11px;">✕ Effacer</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="eleves-list" id="eleves-list"></div>
+  </div>
+
+  <div id="print-area">
+    <div class="edt-wrapper">
+      <table class="edt-jour" id="edt-table"></table>
+    </div>
+  </div>
+
+  <div id="export-container" style="display: none;"></div>
+</main>
+
+<div id="custom-context-menu" class="context-menu">
+  <div class="context-menu-item" id="menu-edit">✏️ Éditer le créneau</div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item" id="menu-copy">📋 Copier le créneau</div>
+  <div class="context-menu-item" id="menu-paste">📥 Coller ici</div>
+  <div class="context-menu-item" id="menu-duplicate-week">🔄 Dupliquer sur la semaine</div>
+  <div class="context-menu-separator"></div>
+  <div class="context-menu-item danger" id="menu-delete">🗑️ Effacer la case</div>
+</div>
+
+<div class="modal-backdrop" id="settings-modal-backdrop">
+  <div class="modal wide">
+    <h2>Paramètres horaires & Pauses</h2>
+    <form id="settings-form">
+      <div style="display:flex; gap: 8px; margin-bottom: 8px;">
+        <label style="flex:1;">Début grille <input type="time" id="set-debut" required></label>
+        <label style="flex:1;">Fin grille <input type="time" id="set-fin" required></label>
+        <label style="flex:1;">Durée créneau
+          <select id="set-duree">
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="30">30 min</option>
+            <option value="60">1 h</option>
+          </select>
+        </label>
+      </div>
+
+      <hr style="border:0; border-top:1px solid #ddd; margin: 12px 0;">
+      <h3 style="margin: 0 0 4px; font-size: 14px;">Pauses et Cantine (Fusionnées)</h3>
+      <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px;">Ces horaires créent une ligne unique compacte pour l'impression.</div>
+
+      <div class="pause-row">
+        <input type="checkbox" id="pause-0-actif">
+        <input type="text" id="pause-0-nom" placeholder="Ex: Récréation" style="flex:2;">
+        <input type="time" id="pause-0-debut"> à <input type="time" id="pause-0-fin">
+        <input type="color" id="pause-0-couleur" value="#e0e0e0" style="padding:0; width:30px; height:24px; cursor:pointer;">
+      </div>
+      <div class="pause-row">
+        <input type="checkbox" id="pause-1-actif">
+        <input type="text" id="pause-1-nom" placeholder="Ex: Cantine" style="flex:2;">
+        <input type="time" id="pause-1-debut"> à <input type="time" id="pause-1-fin">
+        <input type="color" id="pause-1-couleur" value="#fff9c4" style="padding:0; width:30px; height:24px; cursor:pointer;">
+      </div>
+      <div class="pause-row">
+        <input type="checkbox" id="pause-2-actif">
+        <input type="text" id="pause-2-nom" placeholder="Ex: Récréation" style="flex:2;">
+        <input type="time" id="pause-2-debut"> à <input type="time" id="pause-2-fin">
+        <input type="color" id="pause-2-couleur" value="#e0e0e0" style="padding:0; width:30px; height:24px; cursor:pointer;">
+      </div>
+
+      <div class="modal-actions" style="margin-top: 16px;">
+        <button type="button" id="btn-settings-cancel">Annuler</button>
+        <button type="submit" class="primary">Appliquer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="slot-modal-backdrop">
+  <div class="modal">
+    <h2 id="modal-title">Créneau</h2>
+    <div class="subtitle" id="modal-subtitle"></div>
+    <form id="slot-form">
+      <label> Matière / activité <input type="text" id="field-matiere" /> </label>
+      <label id="label-groupe"> Groupe <input type="text" id="field-groupe" placeholder="ex : Groupe lecture" /> </label>
+      <label id="label-adulte"> Adulte / intervenant
+        <div style="display: flex; gap: 4px;">
+          <input type="text" id="field-adulte" placeholder="ex : AVS, enseignant" style="flex: 1;" />
+          <select id="field-role-adulte" style="width: 130px;">
+            <option value="enseignant">Enseignant (Vert)</option>
+            <option value="aeshco">AESHco (Orange)</option>
+            <option value="autre">Autre (Violet)</option>
+          </select>
+        </div>
+      </label>
+      <label id="label-type"> Type
+        <select id="field-type">
+          <option value="fixe">Fixe</option>
+          <option value="exception">Exception</option>
+        </select>
+      </label>
+      
+      <label id="label-regroupement"> Type de regroupement
+        <select id="field-regroupement">
+          <option value="AUTRE">Autre (classe)</option>
+          <option value="ULIS">ULIS</option>
+          <option value="INCLUSION">Inclusion (classe de référence)</option>
+          <option value="DECLOISONNEMENT">Décloisonnement</option>
+          <option value="PEC">PEC (prise en charge)</option>
+        </select>
+      </label>
+      
+      <div id="pec-fields" style="display: none;">
+        <label> Spécialité PEC
+          <select id="field-pec-specialite">
+            <option value="">Aucune</option>
+            <option value="orthophoniste">Orthophoniste</option>
+            <option value="psychomotricien">Psychomotricien</option>
+            <option value="psychologue">Psychologue</option>
+            <option value="educateur">Éducateur</option>
+            <option value="autre">Autre</option>
+          </select>
+        </label>
+        <label> Organisme PEC
+          <select id="field-pec-organisme">
+            <option value="">Aucun</option>
+            <option value="CMPP">CMPP</option>
+            <option value="CMP">CMP</option>
+            <option value="SESSAD">SESSAD</option>
+            <option value="prive">Privé</option>
+            <option value="autre">Autre</option>
+          </select>
+        </label>
+      </div>
+      
+      <label id="label-aesh-type"> Type AESH
+        <select id="field-aesh-type">
+          <option value="">Aucun</option>
+          <option value="AESHi">AESHi (individuel)</option>
+          <option value="AESHm">AESHm (mutualisé)</option>
+          <option value="AESHco">AESHco (collectif)</option>
+        </select>
+      </label>
+      
+      <label> Dupliquer ce créneau sur d'autres jours :
+        <div class="checkbox-group" id="duplicate-days-group"></div>
+      </label>
+
+      <label> Couleur de fond
+        <div class="color-palette" id="color-palette">
+          <!-- Palette générée dynamiquement par rafraichirPalettesEdition() -->
+        </div>
+      </label>
+      <label> Couleur de texte
+        <div class="text-color-palette" id="text-color-palette">
+          <button type="button" class="text-color-option" data-color="#000000" style="background-color:#000000; color:white;">N</button>
+          <button type="button" class="text-color-option" data-color="#ffffff" style="background-color:#ffffff; color:black; border:1px solid #ccc;">B</button>
+          <button type="button" class="text-color-option" data-color="#333333" style="background-color:#333333; color:white;">G</button>
+          <button type="button" class="text-color-option" data-color="#0d47a1" style="background-color:#0d47a1; color:white;">M</button>
+        </div>
+      </label>
+      <label> Commentaire <textarea id="field-commentaire"></textarea> </label>
+      <div class="modal-actions">
+        <div class="left-actions"><button type="button" id="btn-delete-slot" class="danger">Supprimer</button></div>
+        <button type="button" id="btn-cancel">Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="bulk-modal-backdrop">
+  <div class="modal wide">
+    <h2>Édition multiple</h2>
+    <div class="bulk-info" id="bulk-subtitle">
+      Les champs remplis ci-dessous seront appliqués aux <strong id="bulk-count">0</strong> créneaux sélectionnés. Laisse un champ vide si tu ne veux pas le modifier.
+    </div>
+    <form id="bulk-form">
+      <label>Matière / activité <input type="text" id="bulk-matiere" /></label>
+      <label>Groupe <input type="text" id="bulk-groupe" /></label>
+      <label>Adulte
+        <div style="display: flex; gap: 4px;">
+          <input type="text" id="bulk-adulte" style="flex: 1;" />
+          <select id="bulk-role-adulte" style="width: 140px;">
+            <option value="">— ne pas modifier —</option>
+            <option value="enseignant">Enseignant</option>
+            <option value="aeshco">AESHco</option>
+            <option value="aeshi">AESHi</option>
+            <option value="aeshm">AESHm</option>
+            <option value="specialiste">Spécialiste</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+      </label>
+      <label>Type
+        <select id="bulk-type"><option value="">— ne pas modifier —</option></select>
+      </label>
+      <label>Type de regroupement
+        <select id="bulk-regroupement">
+          <option value="">— ne pas modifier —</option>
+          <option value="ULIS">ULIS</option>
+          <option value="INCLUSION">Inclusion</option>
+          <option value="DECLOISONNEMENT">Décloisonnement</option>
+          <option value="PEC">PEC</option>
+          <option value="AUTRE">Autre</option>
+        </select>
+      </label>
+      <label>Type AESH
+        <select id="bulk-aesh-type">
+          <option value="">— ne pas modifier —</option>
+          <option value="AESHi">AESHi (individuel)</option>
+          <option value="AESHm">AESHm (mutualisé)</option>
+          <option value="AESHco">AESHco (collectif)</option>
+        </select>
+      </label>
+      <label>Couleur de fond
+        <div class="color-palette" id="bulk-color-palette"></div>
+      </label>
+      <label>Couleur de texte
+        <div class="text-color-palette" id="bulk-text-color-palette"></div>
+      </label>
+      <label>Commentaire <textarea id="bulk-commentaire" rows="2"></textarea></label>
+      <div class="modal-actions">
+        <div class="left-actions"><button type="button" id="btn-bulk-delete" class="danger">Vider ces cases</button></div>
+        <button type="button" id="btn-bulk-cancel">Annuler</button>
+        <button type="submit" class="primary">Appliquer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="eleves-modal-backdrop">
+  <div class="modal xl" style="width: 1000px; max-width: 95vw;">
+    <h2>Gestion des élèves</h2>
+    <div style="display: flex; gap: 20px;">
+      
+      <!-- Liste des élèves (100% de la largeur) -->
+      <div style="flex: 1; overflow-y: auto; max-height: 600px;">
+        <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; font-weight: 600;">Liste des élèves (<span id="eleves-count">0</span>)</span>
+        </div>
+        
+        <div id="eleves-list-modal"></div>
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" id="btn-add-eleve-in-modal" class="primary">➕ Ajouter un élève</button>
+        <button type="button" id="btn-eleve-cancel" class="primary">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="print-modal-backdrop">
+  <div class="modal wide">
+    <h2>Imprimer / PDF</h2>
+    <form id="print-form">
+      <p style="font-size:12px; margin-bottom: 8px; color: var(--muted);">Choisissez le type d'impression :</p>
+      <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="print-type" value="days" checked>
+          <span style="font-size: 13px;">Par jours</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="print-type" value="eleve">
+          <span style="font-size: 13px;">Par élève</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="print-type" value="enseignant">
+          <span style="font-size: 13px;">Enseignant</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="print-type" value="aeshco">
+          <span style="font-size: 13px;">AESHco</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="print-type" value="aeshi">
+          <span style="font-size: 13px;">AESHi/m</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="print-type" value="aeshm">
+          <span style="font-size: 13px;">AESHm</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="radio" name="print-type" value="stats">
+          <span style="font-size: 13px;">Statistiques</span>
+        </label>
+      </div>
+      
+      <div id="print-options-days" style="margin-bottom: 12px;">
+        <p style="font-size:12px; margin-bottom: 8px; color: var(--muted);">Sélectionnez les jours à imprimer :</p>
+        <div class="checkbox-group" id="print-days-group" style="flex-direction: column; align-items: flex-start;"></div>
+      </div>
+      
+      <div id="print-options-eleve" style="margin-bottom: 12px; display: none;">
+        <p style="font-size:12px; margin-bottom: 8px; color: var(--muted);">Sélectionnez l'élève :</p>
+        <select id="print-eleve-select" style="width: 100%; margin-bottom: 8px;">
+          <option value="">Tous les élèves</option>
+        </select>
+      </div>
+      
+      <div class="modal-actions" style="margin-top: 16px;">
+        <button type="button" id="btn-print-cancel">Annuler</button>
+        <button type="submit" class="primary">Ouvrir l'impression</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="stats-modal-backdrop">
+  <div class="modal wide">
+    <h2>📊 Statistiques et Compteurs d'heures</h2>
+    <p class="subtitle">Ce tableau calcule le temps total programmé par élève sur la semaine, ventilé par type d'intervenant.</p>
+    
+    <div id="stats-container" style="max-height: 60vh; overflow-y: auto; margin-bottom: 12px;"></div>
+    
+    <div class="modal-actions">
+      <button type="button" id="btn-stats-close" class="primary">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="fiche-eleve-modal-backdrop">
+  <div class="modal xl" style="width: 1100px; max-width: 95vw; max-height: 90vh; overflow-y: auto;">
+    <h2 id="fiche-eleve-title">Fiche Élève</h2>
+    
+    <div id="fiche-eleve-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      
+      <!-- Colonne GAUCHE -->
+      <div>
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">👤 Informations personnelles</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label> Prénom <input type="text" id="fiche-eleve-prenom" required> </label>
+            <label> Nom <input type="text" id="fiche-eleve-nom"> </label>
+          </div>
+          
+          <label> Date de naissance <input type="date" id="fiche-eleve-date-naissance"> </label>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label> Classe <input type="text" id="fiche-eleve-classe"> </label>
+            <label> Groupe <input type="text" id="fiche-eleve-groupe"> </label>
+          </div>
+          
+          <div style="margin-top: 12px;">
+            <label style="margin-bottom: 8px;"> Niveau scolaire
+              <select id="fiche-eleve-niveau">
+                <option value="">Non renseigné</option>
+                <option value="TPS">TPS (Toute Petite Section)</option>
+                <option value="PS">PS (Petite Section)</option>
+                <option value="MS">MS (Moyenne Section)</option>
+                <option value="GS">GS (Grande Section)</option>
+                <option value="CP">CP</option>
+                <option value="CE1">CE1</option>
+                <option value="CE2">CE2</option>
+                <option value="CM1">CM1</option>
+                <option value="CM2">CM2</option>
+                <option value="6ème">6ème</option>
+                <option value="5ème">5ème</option>
+                <option value="4ème">4ème</option>
+                <option value="3ème">3ème</option>
+              </select>
+            </label>
+          </div>
+        </section>
+        
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">🏫 Parcours scolaire</h3>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label> Élève ULIS ? 
+              <select id="fiche-eleve-ulis">
+                <option value="false">Non</option>
+                <option value="true">Oui</option>
+              </select>
+            </label>
+            <label> Années en ULIS <input type="number" id="fiche-eleve-annees-ulis" min="0" value="0"> </label>
+          </div>
+          
+          <label> Date d'entrée dans cette ULIS <input type="date" id="fiche-eleve-date-entree-ulis"> </label>
+          <label> Date d'entrée dans l'école <input type="date" id="fiche-eleve-date-entree"> </label>
+        </section>
+        
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">🚗 Transport</h3>
+          
+          <div style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+            <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; font-weight: bold;">
+              <input type="checkbox" id="fiche-eleve-taxi"> Utilise un taxi scolaire ?
+            </label>
+          </div>
+          
+          <div id="fiche-taxi-details" style="display: none; margin-top: 12px;">
+            <label> Compagnie de taxi <input type="text" id="fiche-eleve-taxi-compagnie" placeholder="ex: Taxi G7, Allo Taxi..."> </label>
+          </div>
+        </section>
+        
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">🍽️ Restauration</h3>
+          
+          <div style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 12px; border-radius: 4px;">
+            <label style="flex-direction: row; align-items: center; gap: 8px; margin: 0; font-weight: bold;">
+              <input type="checkbox" id="fiche-eleve-cantine"> Mange à la cantine ?
+            </label>
+          </div>
+        </section>
+        
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">📞 Contacts d'urgence</h3>
+          
+          <label> Téléphone d'urgence <input type="tel" id="fiche-eleve-telephone-urgence" placeholder="ex: 06 12 34 56 78"> </label>
+          <label> Téléphone principal <input type="tel" id="fiche-eleve-telephone" placeholder="ex: 06 98 76 54 32"> </label>
+          <label> Email des parents <input type="email" id="fiche-eleve-email" placeholder="ex: parents@email.com"> </label>
+          <label> Adresse <input type="text" id="fiche-eleve-adresse" placeholder="ex: 123 rue de l'École, 75000 Paris"> </label>
+        </section>
+      </div>
+      
+      <!-- Colonne DROITE -->
+      <div>
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">🤝 Accompagnement (AESH)</h3>
+          
+          <label> Type d'AESH
+            <select id="fiche-eleve-aesh-type">
+              <option value="">Aucun AESH</option>
+              <option value="AESHi">AESHi (Individuel)</option>
+              <option value="AESHm">AESHm (Mutualisé)</option>
+              <option value="AESHco">AESHco (Collectif)</option>
+            </select>
+          </label>
+          
+          <label> Nom de l'AESH <input type="text" id="fiche-eleve-aesh-nom" placeholder="ex: Mme Dupont"> </label>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label> Nombre d'heures/semaine <input type="number" id="fiche-eleve-aesh-heures" min="0" step="0.5" value="0"> </label>
+            <label> Mutualisé avec <input type="text" id="fiche-eleve-aesh-mutualise" placeholder="IDs élèves séparés par virgules"> </label>
+          </div>
+        </section>
+        
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">🏥 Prise en charge (PEC)</h3>
+          
+          <label> Spécialité
+            <select id="fiche-eleve-pec-specialite">
+              <option value="">Aucune PEC</option>
+              <option value="orthophoniste">Orthophoniste</option>
+              <option value="psychomotricien">Psychomotricien</option>
+              <option value="psychologue">Psychologue</option>
+              <option value="educateur">Éducateur</option>
+              <option value="autre">Autre</option>
+            </select>
+          </label>
+          
+          <label> Organisme
+            <select id="fiche-eleve-pec-organisme">
+              <option value="">Aucun</option>
+              <option value="CMPP">CMPP</option>
+              <option value="CMP">CMP</option>
+              <option value="SESSAD">SESSAD</option>
+              <option value="prive">Privé</option>
+              <option value="autre">Autre</option>
+            </select>
+          </label>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label> Fréquence <input type="text" id="fiche-eleve-pec-frequence" placeholder="ex: Hebdomadaire"> </label>
+            <label> Lieu <input type="text" id="fiche-eleve-pec-lieu" placeholder="ex: À l'école"> </label>
+          </div>
+          
+          <label> Nombre d'heures/semaine <input type="number" id="fiche-eleve-pec-heures" min="0" step="0.5" value="0"> </label>
+        </section>
+        
+        <section style="background: #fff3e0; border: 2px solid #ff9800; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid #ff9800; padding-bottom: 8px;">📜 Droits MDPH</h3>
+          
+          <div style="background: #ffe0b2; padding: 8px; border-radius: 4px; margin-bottom: 12px; font-size: 11px; color: #bf360c;">
+            ⚠️ <strong>Attention :</strong> Les dates expirées seront affichées en rouge dans l'interface. Pensez à renouveler les droits avant expiration !
+          </div>
+          
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px;">
+            <thead>
+              <tr style="background: #ffe0b2;">
+                <th style="padding: 6px; text-align: left;">Type de droit</th>
+                <th style="padding: 6px; text-align: left;">Date limite</th>
+                <th style="padding: 6px; text-align: left;">Décision</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="background: #fff;">
+                <td style="padding: 6px;"><strong>ULIS</strong></td>
+                <td style="padding: 6px;"><input type="date" id="fiche-mdph-ulis-date" class="mdph-date-input"></td>
+                <td style="padding: 6px;">
+                  <select id="fiche-mdph-ulis-type" class="mdph-type-input">
+                    <option value="">Non renseigné</option>
+                    <option value="notifie">Notifié</option>
+                    <option value="en_attente">En attente</option>
+                    <option value="renouvellement">Renouvellement</option>
+                    <option value="refuse">Refusé</option>
+                  </select>
+                </td>
+              </tr>
+              <tr style="background: #f9f9f9;">
+                <td style="padding: 6px;"><strong>SESSAD</strong></td>
+                <td style="padding: 6px;"><input type="date" id="fiche-mdph-sessad-date" class="mdph-date-input"></td>
+                <td style="padding: 6px;">
+                  <select id="fiche-mdph-sessad-type" class="mdph-type-input">
+                    <option value="">Non renseigné</option>
+                    <option value="notifie">Notifié</option>
+                    <option value="en_attente">En attente</option>
+                    <option value="renouvellement">Renouvellement</option>
+                    <option value="refuse">Refusé</option>
+                  </select>
+                </td>
+              </tr>
+              <tr style="background: #fff;">
+                <td style="padding: 6px;"><strong>AESH</strong></td>
+                <td style="padding: 6px;"><input type="date" id="fiche-mdph-aesh-date" class="mdph-date-input"></td>
+                <td style="padding: 6px;">
+                  <select id="fiche-mdph-aesh-type" class="mdph-type-input">
+                    <option value="">Non renseigné</option>
+                    <option value="notifie">Notifié</option>
+                    <option value="en_attente">En attente</option>
+                    <option value="renouvellement">Renouvellement</option>
+                    <option value="refuse">Refusé</option>
+                  </select>
+                </td>
+              </tr>
+              <tr style="background: #f9f9f9;">
+                <td style="padding: 6px;"><strong>Transport</strong></td>
+                <td style="padding: 6px;"><input type="date" id="fiche-mdph-transport-date" class="mdph-date-input"></td>
+                <td style="padding: 6px;">
+                  <select id="fiche-mdph-transport-type" class="mdph-type-input">
+                    <option value="">Non renseigné</option>
+                    <option value="notifie">Notifié</option>
+                    <option value="en_attente">En attente</option>
+                    <option value="renouvellement">Renouvellement</option>
+                    <option value="refuse">Refusé</option>
+                  </select>
+                </td>
+              </tr>
+              <tr style="background: #fff;">
+                <td style="padding: 6px;"><strong>Autre</strong></td>
+                <td style="padding: 6px;"><input type="date" id="fiche-mdph-autre-date" class="mdph-date-input"></td>
+                <td style="padding: 6px;">
+                  <select id="fiche-mdph-autre-type" class="mdph-type-input">
+                    <option value="">Non renseigné</option>
+                    <option value="notifie">Notifié</option>
+                    <option value="en_attente">En attente</option>
+                    <option value="renouvellement">Renouvellement</option>
+                    <option value="refuse">Refusé</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <label> Description de l'autre droit <input type="text" id="fiche-mdph-autre-description" placeholder="ex: AVS, Auxiliaire de vie..."> </label>
+        </section>
+        
+        <section style="background: #f5f5f5; padding: 12px; border-radius: 6px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 8px;">📝 Autres informations</h3>
+          
+          <label> Notifications / Plans de suivi
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+              <label style="flex-direction: row; align-items: center; gap: 4px; margin: 0; font-weight: normal;">
+                <input type="checkbox" id="fiche-eleve-notif-pps"> PPS
+              </label>
+              <label style="flex-direction: row; align-items: center; gap: 4px; margin: 0; font-weight: normal;">
+                <input type="checkbox" id="fiche-eleve-notif-pai"> PAI
+              </label>
+              <label style="flex-direction: row; align-items: center; gap: 4px; margin: 0; font-weight: normal;">
+                <input type="checkbox" id="fiche-eleve-notif-pap"> PAP
+              </label>
+              <label style="flex-direction: row; align-items: center; gap: 4px; margin: 0; font-weight: normal;">
+                <input type="checkbox" id="fiche-eleve-notif-ppre"> PPRE
+              </label>
+              <label style="flex-direction: row; align-items: center; gap: 4px; margin: 0; font-weight: normal;">
+                <input type="checkbox" id="fiche-eleve-notif-ess"> ESS
+              </label>
+            </div>
+          </label>
+          
+          <label> Allergies <textarea id="fiche-eleve-allergies" rows="2" placeholder="ex: Arachide, Lait, Pollen..."></textarea> </label>
+          
+          <label> Régime alimentaire <input type="text" id="fiche-eleve-regime" placeholder="ex: Sans gluten, Végétarien..."> </label>
+          
+          <label> Informations médicales <textarea id="fiche-eleve-medical" rows="2" placeholder="ex: Asthme, Épilepsie..."></textarea> </label>
+          
+          <label> Remarques générales <textarea id="fiche-eleve-remarques" rows="2" placeholder="Autres informations importantes..."></textarea> </label>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label> Élève actif ?
+              <select id="fiche-eleve-actif">
+                <option value="true">Oui (affiché dans l'emploi du temps)</option>
+                <option value="false">Non (masqué)</option>
+              </select>
+            </label>
+            <label> Enseignant de référence <input type="text" id="fiche-eleve-enseignant" placeholder="ex: Mme Martin"> </label>
+          </div>
+        </section>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <div class="left-actions">
+        <button type="button" id="btn-fiche-print" class="primary">🖨️ Imprimer la fiche</button>
+      </div>
+      <button type="button" id="btn-fiche-cancel" class="danger">Fermer</button>
+      <button type="button" id="btn-fiche-save" class="primary">💾 Enregistrer les modifications</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale des paramètres globaux refondue (interface unique scrollable) -->
+<div class="modal-backdrop" id="modal-parametres-globaux-backdrop">
+  <div class="modal xl" style="width: 850px; max-width: 95vw; max-height: 90vh; overflow-y: auto;">
+    <h2>⚙️ Paramètres globaux</h2>
+    <p class="subtitle">Configuration unique scrollable - Tous les paramètres en une seule vue</p>
+    
+    <form id="parametres-globaux-form">
+      <!-- 1. Palette de 12 couleurs partagée -->
+      <section class="parametres-section">
+        <h3>🎨 Palette de 12 couleurs partagée</h3>
+        <p class="section-description">Ces couleurs sont utilisées dans l'édition de créneau et pour les types de regroupement. Modifiez-les ici pour impacter immédiatement l'interface.</p>
+        
+        <div class="palette-container" id="palette-couleurs-container">
+          <!-- Les 12 inputs de couleur seront générés dynamiquement -->
+        </div>
+        
+        <div style="margin-top: 12px;">
+          <button type="button" id="btn-reset-palette" class="secondary" style="font-size: 12px; padding: 4px 8px;">
+            Réinitialiser aux couleurs par défaut
+          </button>
+        </div>
+      </section>
+      
+      
+      <!-- 3. Horaires et créneaux fusionnés -->
+      <section class="parametres-section">
+        <h3>⏰ Horaires et créneaux fusionnés</h3>
+        
+        <div class="horaires-grid">
+          <label style="flex: 1;">
+            Heure de début
+            <input type="time" id="param-heure-debut" value="08:30" required>
+          </label>
+          <label style="flex: 1;">
+            Heure de fin
+            <input type="time" id="param-heure-fin" value="16:30" required>
+          </label>
+          <label style="flex: 1;">
+            Durée créneau (minutes)
+            <select id="param-duree-creneau">
+              <option value="10">10 min</option>
+              <option value="15" selected>15 min</option>
+              <option value="20">20 min</option>
+              <option value="30">30 min</option>
+              <option value="60">60 min</option>
+            </select>
+          </label>
+        </div>
+        
+        <div style="margin-top: 16px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 14px;">Créneaux fusionnés (pauses automatiques)</h4>
+          <div id="param-pauses-container">
+            <!-- Les pauses seront générées dynamiquement -->
+          </div>
+          <div style="margin-top: 8px;">
+            <button type="button" id="btn-ajouter-pause" style="font-size: 12px; padding: 4px 8px;">
+              + Ajouter une pause
+            </button>
+          </div>
+        </div>
+      </section>
+      
+      <hr class="section-separator">
+      
+      <!-- 4. Jours affichés -->
+      <section class="parametres-section">
+        <h3>📅 Jours affichés</h3>
+        <p class="section-description">Cochez les jours à afficher dans l'emploi du temps.</p>
+        
+        <div class="checkbox-group jours-checkbox-group">
+          <label><input type="checkbox" id="param-jour-lundi" checked> Lundi</label>
+          <label><input type="checkbox" id="param-jour-mardi" checked> Mardi</label>
+          <label><input type="checkbox" id="param-jour-mercredi"> Mercredi</label>
+          <label><input type="checkbox" id="param-jour-jeudi" checked> Jeudi</label>
+          <label><input type="checkbox" id="param-jour-vendredi" checked> Vendredi</label>
+          <label><input type="checkbox" id="param-jour-samedi"> Samedi</label>
+        </div>
+      </section>
+      
+      <hr class="section-separator">
+      
+      <!-- 5. Champs à afficher (checkboxes) -->
+      <section class="parametres-section">
+        <h3>👁️ Champs à afficher</h3>
+        <p class="section-description">Cochez les champs que vous souhaitez voir apparaître dans la fiche élève et la modale d'édition.</p>
+        
+        <div class="champs-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          
+          <!-- Colonne gauche : Champs élèves de base -->
+          <div class="champs-col">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--accent-dark);">Élèves (base)</h4>
+            <div class="checkbox-group vertical">
+              <label><input type="checkbox" id="param-champ-classe" checked> Classe</label>
+              <label><input type="checkbox" id="param-champ-ulis" checked> ULIS</label>
+              <label><input type="checkbox" id="param-champ-groupe" checked> Groupe</label>
+              <label><input type="checkbox" id="param-champ-aesh" checked> AESH</label>
+              <label><input type="checkbox" id="param-champ-pec" checked> PEC</label>
+              <label><input type="checkbox" id="param-champ-niveau" checked> Niveau scolaire</label>
+            </div>
+            
+            <h4 style="margin: 16px 0 8px 0; font-size: 14px; color: var(--accent-dark);">Fiche élève complète</h4>
+            <div class="checkbox-group vertical">
+              <label><input type="checkbox" id="param-champ-taxi" checked> Taxi scolaire</label>
+              <label><input type="checkbox" id="param-champ-cantine" checked> Cantine</label>
+              <label><input type="checkbox" id="param-champ-date-naissance" checked> Date de naissance</label>
+              <label><input type="checkbox" id="param-champ-date-entree" checked> Date d'entrée</label>
+              <label><input type="checkbox" id="param-champ-telephone" checked> Téléphone</label>
+              <label><input type="checkbox" id="param-champ-email" checked> Email</label>
+              <label><input type="checkbox" id="param-champ-adresse" checked> Adresse</label>
+              <label><input type="checkbox" id="param-champ-allergies" checked> Allergies</label>
+              <label><input type="checkbox" id="param-champ-regime" checked> Régime alimentaire</label>
+              <label><input type="checkbox" id="param-champ-medical" checked> Informations médicales</label>
+            </div>
+          </div>
+          
+          <!-- Colonne droite : Champs créneaux et droits MDPH -->
+          <div class="champs-col">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--accent-dark);">Créneaux</h4>
+            <div class="checkbox-group vertical">
+              <label><input type="checkbox" id="param-champ-matiere" checked> Matière</label>
+              <label><input type="checkbox" id="param-champ-groupe-creneau" checked> Groupe</label>
+              <label><input type="checkbox" id="param-champ-adulte" checked> Adulte</label>
+              <label><input type="checkbox" id="param-champ-type" checked> Type (fixe/exception)</label>
+              <label><input type="checkbox" id="param-champ-regroupement" checked> Type de regroupement</label>
+              <label><input type="checkbox" id="param-champ-commentaire" checked> Commentaire</label>
+            </div>
+            
+            <h4 style="margin: 16px 0 8px 0; font-size: 14px; color: var(--accent-dark);">Modale édition complète</h4>
+            <div class="checkbox-group vertical">
+              <label><input type="checkbox" id="param-champ-pec-specialite" checked> Spécialité PEC</label>
+              <label><input type="checkbox" id="param-champ-pec-organisme" checked> Organisme PEC</label>
+              <label><input type="checkbox" id="param-champ-aesh-type" checked> Type AESH</label>
+              <label><input type="checkbox" id="param-champ-role-adulte" checked> Rôle adulte</label>
+            </div>
+            
+            <h4 style="margin: 16px 0 8px 0; font-size: 14px; color: var(--accent-dark);">Droits MDPH</h4>
+            <div class="checkbox-group vertical">
+              <label><input type="checkbox" id="param-champ-mdph-ulis" checked> ULIS</label>
+              <label><input type="checkbox" id="param-champ-mdph-sessad" checked> SESSAD</label>
+              <label><input type="checkbox" id="param-champ-mdph-aesh" checked> AESH</label>
+              <label><input type="checkbox" id="param-champ-mdph-transport" checked> Transport</label>
+              <label><input type="checkbox" id="param-champ-mdph-autre" checked> Autre droit</label>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 12px; font-size: 11px; color: var(--muted);">
+          <strong>Note :</strong> Les champs décochés seront masqués dans l'interface mais restent stockés dans les données.
+        </div>
+      </section>
+      
+      <hr class="section-separator">
+      
+      <!-- 6. Zones d'enseignement réelles -->
+      <section class="parametres-section">
+        <h3>🏫 Zones d'enseignement réelles</h3>
+        <p class="section-description">Informations géographiques pour l'établissement.</p>
+        
+        <div class="zones-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <label>
+            Académie
+            <input type="text" id="param-academie" placeholder="ex: Académie de Paris">
+          </label>
+          <label>
+            Département
+            <input type="text" id="param-departement" placeholder="ex: 75">
+          </label>
+          <label>
+            Ville
+            <input type="text" id="param-ville" placeholder="ex: Paris">
+          </label>
+        </div>
+      </section>
+      
+      <!-- Boutons d'action -->
+      <div class="modal-actions" style="margin-top: 24px;">
+        <button type="button" id="btn-parametres-annuler" class="secondary">Annuler</button>
+        <button type="submit" class="primary">Appliquer les paramètres</button>
+      </div>
+
+<script src="js/constants.js"></script>
+<script src="js/modal-manager.js"></script>
+<script src="js/store.js"></script>
+<script src="js/selection.js"></script>
+<script src="js/contextmenu.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/modals.js"></script>
+<script src="js/eleves.js"></script>
+<script src="js/eleves-fiche.js"></script>
+<script src="js/print.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/parametres.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
